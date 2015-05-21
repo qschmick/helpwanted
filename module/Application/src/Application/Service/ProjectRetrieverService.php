@@ -4,6 +4,7 @@ namespace Application\Service;
 
 use Application\Project;
 use Elasticsearch\Client;
+use Zend\Http\Client\Adapter\AdapterInterface;
 
 class ProjectRetrieverService implements ProjectRetrieverServiceInterface
 {
@@ -44,20 +45,9 @@ class ProjectRetrieverService implements ProjectRetrieverServiceInterface
      */
     public function getByIdentifier($service="",$owner="",$project=""){
 
-
-        /*
-         * "match" : {
-        "message" : {
-            "query" : "this is a test",
-            "type" : "phrase_prefix"
-        }
-    }
-
-         */
-
         ['match'=>['service'=>['query'=>$service]]];
 
-        $filters = array_values(array_filter([
+        $this->params['body']['query']['bool']['must'] = array_values(array_filter([
             'service'=>['match'=>['service'=>strtolower($service)]],
             'owner'=>['match'=>['owner'=>strtolower($owner)]],
             'project'=>['match'=>['project'=>strtolower($project)]]
@@ -67,17 +57,7 @@ class ProjectRetrieverService implements ProjectRetrieverServiceInterface
             return current($test) !== '';
         }));
 
-
-
-        $params['body']['query']['match_phrase_prefix']['match'] = 'abc';
-
-        $params['body']['query']['bool']['must'] = [
-            array('match' => array('testField' => 'abc')),
-            array('match' => array('anotherTestField' => 'xyz')),
-        ];
-
-        $results = $this->client->search($this->params);
-        return new ProjectRetrieverIterator($results);
+        return new ProjectRetrieverIterator($this->client->search($this->params));
     }
 
     /**
@@ -103,8 +83,7 @@ class ProjectRetrieverService implements ProjectRetrieverServiceInterface
      */
     public function getByFilter(){
 
-        $this->params['body']['query']['bool']['must'] = $this->generateFilterQuery();
-
+        $this->params['body']['query']['bool']['should'] = $this->generateFilterQuery();
         $results = $this->client->search($this->params);
         return new ProjectRetrieverIterator($results);
     }
